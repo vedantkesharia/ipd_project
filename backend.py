@@ -9,8 +9,7 @@ from flask_cors import CORS
 
 CORS(app)  
 
-os.environ["OPENAI_API_KEY"] = "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"
-
+SECRET_KEY = os.getenv("OPENAI_API_KEY")
 @app.route('/get_summary', methods=['POST'])
 def get_summary():
     data = request.json
