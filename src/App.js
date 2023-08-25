@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import GradioUI from './GradioUI'; // Import your Gradio component
+import SpeechRecognition,{ useSpeechRecognition } from 'react-speech-recognition';
+import GradioUI from './GradioUI';
 
 function App() {
   const [title, setTitle] = useState('');
@@ -8,24 +9,54 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
 
+  const commands = [
+    {
+      command: 'clear',
+      callback: () => setTitle(''),
+    },
+  ];
+
+  // const {
+  //   transcript,
+  //   listening,
+  //   startListening,
+  //   stopListening,
+  //   resetTranscript,
+  // } = useSpeechRecognition({ commands });
+
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition
+  } = useSpeechRecognition();
+  if (!browserSupportsSpeechRecognition) {
+    return <span>Browser doesn't support speech recognition.</span>;
+  }
+
   const handleRecord = () => {
     setIsRecording(true);
+    SpeechRecognition.startListening();
   };
 
   const handleStopRecording = (blob) => {
     console.log('Audio Blob:', blob);
     setIsRecording(false);
     setAudioBlob(blob);
+    SpeechRecognition.stopListening();
+    setTitle(transcript); // Set recognized text to the title
   };
 
   const handleSubmit = async () => {
     try {
       const formData = new FormData();
-      formData.append('title', title); 
-      formData.append('audio', audioBlob);
+      formData.append('title', title);
+      if (audioBlob) {
+        formData.append('audio', audioBlob);
+      }
 
       console.log('Form Data:', formData);
-      // Send the data as JSON
+
       const response = await axios.post('http://localhost:5000/get_summary', { title }, {
         headers: {
           'Content-Type': 'application/json',
@@ -41,12 +72,15 @@ function App() {
   return (
     <div>
       <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <button onClick={handleRecord} disabled={isRecording}>Record</button>
+      <button onClick={handleRecord} disabled={isRecording || listening}>
+        Record
+      </button>
       {isRecording && <p>Recording...</p>}
-      <button onClick={handleSubmit} disabled={isRecording}>Get Summary</button>
+      <button onClick={handleSubmit} disabled={isRecording || listening}>
+        Get Summary
+      </button>
       {summary && <p>{summary}</p>}
 
-      {/* Add the Gradio voice recognition UI */}
       <GradioUI
         onRecordingStop={handleStopRecording}
         isRecording={isRecording}
@@ -56,6 +90,71 @@ function App() {
 }
 
 export default App;
+
+
+
+// import React, { useState } from 'react';
+// import axios from 'axios';
+// import GradioUI from './GradioUI'; // Import your Gradio component
+// import SpeechRecognition from 'react-speech-recognition';
+
+// function App() {
+//   const [title, setTitle] = useState('');
+//   const [summary, setSummary] = useState('');
+//   const [isRecording, setIsRecording] = useState(false);
+//   const [audioBlob, setAudioBlob] = useState(null);
+
+//   const handleRecord = () => {
+//     setIsRecording(true);
+//   };
+
+//   const handleStopRecording = (blob) => {
+//     console.log('Audio Blob:', blob);
+//     setIsRecording(false);
+//     setAudioBlob(blob);
+//   };
+
+//   const handleSubmit = async () => {
+//     try {
+//       const formData = new FormData();
+//       formData.append('title', title); 
+//       formData.append('audio', audioBlob);
+//       if (audioBlob) {  // Added this condition
+//         formData.append('audio', audioBlob);
+//       }
+  
+//       console.log('Form Data:', formData);
+//       // Send the data as JSON
+//       const response = await axios.post('http://localhost:5000/get_summary', { title }, {
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//       });
+
+//       setSummary(response.data.summary);
+//     } catch (error) {
+//       console.error('Error fetching summary:', error);
+//     }
+//   };
+
+//   return (
+//     <div>
+//       <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+//       <button onClick={handleRecord} disabled={isRecording}>Record</button>
+//       {isRecording && <p>Recording...</p>}
+//       <button onClick={handleSubmit} disabled={isRecording}>Get Summary</button>
+//       {summary && <p>{summary}</p>}
+
+//       {/* Add the Gradio voice recognition UI */}
+//       <GradioUI
+//         onRecordingStop={handleStopRecording}
+//         isRecording={isRecording}
+//       />
+//     </div>
+//   );
+// }
+
+// export default App;
 
 
 

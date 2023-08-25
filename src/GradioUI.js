@@ -9,7 +9,7 @@ function GradioUI({ onRecordingStop, isRecording }) {
       const formData = new FormData();
       formData.append('audio', blob);
 
-      // Replace 'http://localhost:5000/transcribe_audio' with your backend endpoint
+
       const response = await axios.post('http://localhost:7860/transcribe_audio', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',

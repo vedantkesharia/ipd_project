@@ -5,7 +5,9 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 from flask_cors import CORS  
 
-CORS(app)  
+CORS(app)
+
+@app.route('/transcribe_audio', methods=['POST'])
 def transcribe_audio(audio):
     # Load the Whisper ASR model
     model = whisper.load_model("small")
@@ -26,7 +28,7 @@ if __name__ == '__main__':
         title='OpenAI Whisper ASR Gradio Web UI',
         fn=transcribe_audio,
         inputs=[
-            gr.inputs.Audio(source="microphone", type="filepath")
+            gr.inputs.Audio(source="microphone", type="blob")
         ],
         outputs=[
             "textbox", "text"
