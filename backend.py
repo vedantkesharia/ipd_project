@@ -28,6 +28,83 @@ if __name__ == '__main__':
 
 
 
+# import os
+# from flask import Flask, request, jsonify
+# from langchain.llms import OpenAI
+# from langchain.agents import AgentType, initialize_agent, load_tools
+# from werkzeug.utils import secure_filename
+# import tempfile
+# import whisper
+# import gradio as gr
+
+# app = Flask(__name__)
+# from flask_cors import CORS  
+
+# CORS(app)  
+
+# SECRET_KEY = os.getenv("OPENAI_API_KEY")
+
+# # Load the Whisper ASR model
+# model = whisper.load_model("small")
+
+# # Initialize the OpenAI LLM
+# llm = OpenAI(temperature=0.7)
+
+# # Load tools for LLM
+# tools = load_tools(["wikipedia", "llm-math"], llm=llm)
+
+# # Initialize the agent
+# agent = initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION)
+
+# @app.route('/get_summary', methods=['POST'])
+# def get_summary():
+#     data = request.json
+#     title = data.get('title', '')
+
+#     output = agent.run(f"Summarize the entire page with the following title on Wikipedia, ensure that there are no incomplete sentences: {title}")
+    
+#     return jsonify({"summary": output})
+
+# @app.route('/transcribe_audio', methods=['POST'])
+# def transcribe_audio():
+#     audio = request.files.get('audio')
+
+#     # Save the audio temporarily
+#     temp_dir = tempfile.gettempdir()
+#     audio_path = os.path.join(temp_dir, secure_filename(audio.filename))
+#     audio.save(audio_path)
+
+#     audio = whisper.load_audio(audio_path)
+#     audio = whisper.pad_or_trim(audio)
+#     mel = whisper.log_mel_spectrogram(audio).to(model.device)
+
+#     _, probs = model.detect_language(mel)
+#     detected_language = max(probs, key=probs.get)
+
+#     options = whisper.DecodingOptions(fp16=False)
+#     result = whisper.decode(model, mel, options)
+
+#     return jsonify({"transcription": result.text, "language": detected_language})
+
+# if __name__ == '__main__':
+#     # Launch Gradio interface
+#     gr.Interface(
+#         title='OpenAI Whisper ASR Gradio Web UI',
+#         fn=transcribe_audio,
+#         inputs=[
+#             gr.inputs.Audio(source="microphone", type="filepath")
+#         ],
+#         outputs=[
+#             "textbox"
+#         ],
+#         live=True).launch()
+
+#     # Run the Flask app
+#     app.run(debug=True)
+
+
+
+
 
 
 
