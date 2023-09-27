@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_cors import cross_origin
 import os
 import openai
 import speech_recognition as sr
@@ -13,7 +12,6 @@ CORS(app)
 
 openai.api_key = 'sk-6Or4GI6jyUeTYuzpM6TUT3BlbkFJ3y2Pegu3vFG9P6200Hu'  # Replace with your OpenAI API key
 
-personality = "p.txt"
 usewhisper = True
 
 # pyttsx3 setup
@@ -41,17 +39,7 @@ def whisper(audio):
     print(user_input)
     return user_input
 
-
 def save_inprogress(suffix, save_foldername):
-    '''
-    Uses the suffix number returned from save_conversation to continually update the 
-    file for this instance of execution.  This is so that you can save the conversation 
-    as you go so if it crashes, you don't lose the conversation. Shouldn't be called
-    from outside of the class.
-
-    Args:
-        suffix  :  Takes suffix count from save_conversation()
-    '''
     os.makedirs(save_foldername, exist_ok=True)
     base_filename = 'conversation'
     filename = os.path.join(save_foldername, f'{base_filename}_{suffix}.txt')
@@ -59,43 +47,43 @@ def save_inprogress(suffix, save_foldername):
     with open(filename, 'w') as file:
         json.dump(messages, file, indent=4)
 
-
 @app.route('/process_voice', methods=['POST'])
-@cross_origin(origins='*', methods=['POST'], headers=['Content-Type'])
 def process_voice():
-    data = request.files['audio']
-    audio_path = 'temp_audio.wav'
-    data.save(audio_path)
+    try:
+        data = request.files['audio']
+        audio_path = 'temp_audio.wav'
+        data.save(audio_path)
 
+        with sr.AudioFile(audio_path) as source:
+            audio = r.record(source)
+            try:
+                if usewhisper:
+                    user_input = whisper(audio)
+                else:
+                    user_input = r.recognize_google(audio)
+            except:
+                return jsonify({"response": "Error processing audio"})
 
-    with sr.AudioFile(audio_path) as source:
-        audio = r.record(source)
-        try:
-            if usewhisper:
-                user_input = whisper(audio)
-            else:
-                user_input = r.recognize_google(audio)
-        except:
-            return jsonify({"response": "Error processing audio"})
+        messages.append({"role": "user", "content": user_input})
 
-    messages.append({"role": "user", "content": user_input})
+        completion = openai.Completion.create(
+            engine="davinci",
+            prompt=user_input,
+            max_tokens=100
+        )
 
-    completion = openai.Completion.create(
-        engine="davinci",
-        prompt=user_input,
-        max_tokens=100
-    )
+        response = completion.choices[0].text.strip()
+        messages.append({"role": "assistant", "content": response})
 
-    response = completion.choices[0].text.strip()
-    messages.append({"role": "assistant", "content": response})
-    # save_inprogress(suffix, save_foldername)
+        response_data = {
+            "response": response,
+            "transcribedCommand": user_input,
+        }
 
-    # engine.say(response)
-    # engine.runAndWait()
-
-    threading.Thread(target=save_inprogress, args=(suffix, save_foldername)).start()
-    return jsonify({"response": response})
-
+        threading.Thread(target=save_inprogress, args=(suffix, save_foldername)).start()
+        return jsonify(response_data)
+    except Exception as e:
+        return jsonify({"response": "Error processing voice command", "error": str(e)})
 
 if __name__ == '__main__':
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -103,7 +91,125 @@ if __name__ == '__main__':
     save_foldername = os.path.join(script_dir, f"conversations/{foldername}")
     suffix = len(os.listdir(save_foldername))
     
-    app.run(debug=True,port=8000)
+    app.run(debug=True, port=8000)
+
+
+
+
+
+
+
+
+
+
+
+
+# from flask import Flask, request, jsonify
+# from flask_cors import CORS
+# from flask_cors import cross_origin
+# import os
+# import openai
+# import speech_recognition as sr
+# import pyttsx3
+# import json
+# import threading
+
+# app = Flask(__name__)
+# CORS(app)
+
+# openai.api_key = 'sk-6Or4GI6jyUeTYuzpM6TUT3BlbkFJ3y2Pegu3vFG9P6200Hu'  # Replace with your OpenAI API key
+
+# personality = "p.txt"
+# usewhisper = True
+
+# # pyttsx3 setup
+# engine = pyttsx3.init()
+# voices = engine.getProperty('voices')
+# engine.setProperty('voice', voices[1].id)  # 0 for male, 1 for female
+
+# # speech recognition set-up
+# r = sr.Recognizer()
+# mic = sr.Microphone(device_index=0)
+# r.dynamic_energy_threshold = False
+# r.energy_threshold = 400
+
+# messages = [{"role": "system", "content": ""}]  # Initialize with empty system message
+
+# def whisper(audio):
+#     with open('speech.wav', 'wb') as f:
+#         f.write(audio.get_wav_data())
+#     speech = open('speech.wav', 'rb')
+#     wcompletion = openai.Audio.transcribe(
+#         model="whisper-1",
+#         file=speech
+#     )
+#     user_input = wcompletion['text']
+#     print(user_input)
+#     return user_input
+
+
+# def save_inprogress(suffix, save_foldername):
+#     '''
+#     Uses the suffix number returned from save_conversation to continually update the 
+#     file for this instance of execution.  This is so that you can save the conversation 
+#     as you go so if it crashes, you don't lose the conversation. Shouldn't be called
+#     from outside of the class.
+
+#     Args:
+#         suffix  :  Takes suffix count from save_conversation()
+#     '''
+#     os.makedirs(save_foldername, exist_ok=True)
+#     base_filename = 'conversation'
+#     filename = os.path.join(save_foldername, f'{base_filename}_{suffix}.txt')
+
+#     with open(filename, 'w') as file:
+#         json.dump(messages, file, indent=4)
+
+
+# @app.route('/process_voice', methods=['POST'])
+# @cross_origin(origins='*', methods=['POST'], headers=['Content-Type'])
+# def process_voice():
+#     data = request.files['audio']
+#     audio_path = 'temp_audio.wav'
+#     data.save(audio_path)
+
+
+#     with sr.AudioFile(audio_path) as source:
+#         audio = r.record(source)
+#         try:
+#             if usewhisper:
+#                 user_input = whisper(audio)
+#             else:
+#                 user_input = r.recognize_google(audio)
+#         except:
+#             return jsonify({"response": "Error processing audio"})
+
+#     messages.append({"role": "user", "content": user_input})
+
+#     completion = openai.Completion.create(
+#         engine="davinci",
+#         prompt=user_input,
+#         max_tokens=100
+#     )
+
+#     response = completion.choices[0].text.strip()
+#     messages.append({"role": "assistant", "content": response})
+#     # save_inprogress(suffix, save_foldername)
+
+#     # engine.say(response)
+#     # engine.runAndWait()
+
+#     threading.Thread(target=save_inprogress, args=(suffix, save_foldername)).start()
+#     return jsonify({"response": response})
+
+
+# if __name__ == '__main__':
+#     script_dir = os.path.dirname(os.path.abspath(__file__))
+#     foldername = "voice_assistant"
+#     save_foldername = os.path.join(script_dir, f"conversations/{foldername}")
+#     suffix = len(os.listdir(save_foldername))
+    
+#     app.run(debug=True,port=8000)
 
 
 

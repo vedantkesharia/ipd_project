@@ -1,3 +1,123 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+function App() {
+  const [response, setResponse] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [inputCommand, setInputCommand] = useState('');
+
+  useEffect(() => {
+    if (response.toLowerCase().includes('search')) {
+      handleGetSummary();
+    }
+  }, [response]);
+
+  const handleRecord = () => {
+    if (inputCommand.toLowerCase().includes('search')) {
+      handleGetSummary();
+    } else {
+      setIsRecording(true);
+      startRecording();
+    }
+  };
+
+  const startRecording = () => {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        const mediaRecorder = new MediaRecorder(stream);
+        const audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          setIsRecording(false);
+
+          try {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recorded.wav');
+
+            const response = await axios.post('http://localhost:8000/process_voice', formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
+
+            setResponse(response.data.response);
+          } catch (error) {
+            console.error('Error processing audio:', error);
+          }
+        };
+
+        mediaRecorder.start();
+
+        // Stop recording after 5 seconds
+        setTimeout(() => {
+          mediaRecorder.stop();
+        }, 5000);
+      })
+      .catch((error) => {
+        console.error('Error accessing microphone:', error);
+      });
+  };
+
+  const handleInputChange = (event) => {
+    setInputCommand(event.target.value);
+  };
+
+  const handleGetSummary = async () => {
+    try {
+      const formData = new FormData();
+      formData.append('text', response);
+
+      const summaryResponse = await axios.post('http://localhost:5000/generate_summary', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setResponse(summaryResponse.data.summary);
+      narrate(summaryResponse.data.summary);
+    } catch (error) {
+      console.error('Error generating summary:', error);
+    }
+  };
+
+  const narrate = (text) => {
+    const synth = window.speechSynthesis;
+    const utterance = new SpeechSynthesisUtterance(text);
+    synth.speak(utterance);
+  };
+
+  return (
+    <div>
+      <input
+        type="text"
+        value={inputCommand}
+        onChange={handleInputChange}
+        placeholder="Enter command..."
+      />
+      <button onClick={handleRecord} disabled={isRecording}>
+        {inputCommand.toLowerCase().includes('search') ? 'Get Summary' : 'Start Recording'}
+      </button>
+      {isRecording && <p>Recording...</p>}
+      {response && (
+        <div>
+          <p>{response}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
+
+
+
+
+
 // import React, { useState, useEffect } from 'react';
 // import axios from 'axios';
 
@@ -118,103 +238,98 @@
 
 
 
+// import React, { useState } from 'react';
+// import axios from 'axios';
+// import SpeechRecognition,{ useSpeechRecognition } from 'react-speech-recognition';
+// import GradioUI from './GradioUI';
 
+// function App() {
+//   const [title, setTitle] = useState('');
+//   const [summary, setSummary] = useState('');
+//   const [isRecording, setIsRecording] = useState(false);
+//   const [audioBlob, setAudioBlob] = useState(null);
 
+//   const commands = [
+//     {
+//       command: 'clear',
+//       callback: () => setTitle(''),
+//     },
+//   ];
 
+//   // const {
+//   //   transcript,
+//   //   listening,
+//   //   startListening,
+//   //   stopListening,
+//   //   resetTranscript,
+//   // } = useSpeechRecognition({ commands });
 
+//   const {
+//     transcript,
+//     listening,
+//     resetTranscript,
+//     browserSupportsSpeechRecognition
+//   } = useSpeechRecognition();
+//   if (!browserSupportsSpeechRecognition) {
+//     return <span>Browser doesn't support speech recognition.</span>;
+//   }
 
-import React, { useState } from 'react';
-import axios from 'axios';
-import SpeechRecognition,{ useSpeechRecognition } from 'react-speech-recognition';
-import GradioUI from './GradioUI';
+//   const handleRecord = () => {
+//     setIsRecording(true);
+//     SpeechRecognition.startListening();
+//   };
 
-function App() {
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState(null);
+//   const handleStopRecording = (blob) => {
+//     console.log('Audio Blob:', blob);
+//     setIsRecording(false);
+//     setAudioBlob(blob);
+//     SpeechRecognition.stopListening();
+//     setTitle(transcript); // Set recognized text to the title
+//   };
 
-  const commands = [
-    {
-      command: 'clear',
-      callback: () => setTitle(''),
-    },
-  ];
+//   const handleSubmit = async () => {
+//     try {
+//       const formData = new FormData();
+//       formData.append('title', title);
+//       if (audioBlob) {
+//         formData.append('audio', audioBlob);
+//       }
 
-  // const {
-  //   transcript,
-  //   listening,
-  //   startListening,
-  //   stopListening,
-  //   resetTranscript,
-  // } = useSpeechRecognition({ commands });
+//       console.log('Form Data:', formData);
 
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition
-  } = useSpeechRecognition();
-  if (!browserSupportsSpeechRecognition) {
-    return <span>Browser doesn't support speech recognition.</span>;
-  }
+//       const response = await axios.post('http://localhost:5000/get_summary', { title }, {
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//       });
 
-  const handleRecord = () => {
-    setIsRecording(true);
-    SpeechRecognition.startListening();
-  };
+//       setSummary(response.data.summary);
+//     } catch (error) {
+//       console.error('Error fetching summary:', error);
+//     }
+//   };
 
-  const handleStopRecording = (blob) => {
-    console.log('Audio Blob:', blob);
-    setIsRecording(false);
-    setAudioBlob(blob);
-    SpeechRecognition.stopListening();
-    setTitle(transcript); // Set recognized text to the title
-  };
+//   return (
+//     <div>
+//       <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+//       <button onClick={handleRecord} disabled={isRecording || listening}>
+//         Record
+//       </button>
+//       {isRecording && <p>Recording...</p>}
+//       <button onClick={handleSubmit} disabled={isRecording || listening}>
+//         Get Summary
+//       </button>
+//       {summary && <p>{summary}</p>}
 
-  const handleSubmit = async () => {
-    try {
-      const formData = new FormData();
-      formData.append('title', title);
-      if (audioBlob) {
-        formData.append('audio', audioBlob);
-      }
+//       <GradioUI
+//         onRecordingStop={handleStopRecording}
+//         isRecording={isRecording}
+//       />
+//     </div>
+//   );
+// }
 
-      console.log('Form Data:', formData);
-
-      const response = await axios.post('http://localhost:5000/get_summary', { title }, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      setSummary(response.data.summary);
-    } catch (error) {
-      console.error('Error fetching summary:', error);
-    }
-  };
-
-  return (
-    <div>
-      <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <button onClick={handleRecord} disabled={isRecording || listening}>
-        Record
-      </button>
-      {isRecording && <p>Recording...</p>}
-      <button onClick={handleSubmit} disabled={isRecording || listening}>
-        Get Summary
-      </button>
-      {summary && <p>{summary}</p>}
-
-      <GradioUI
-        onRecordingStop={handleStopRecording}
-        isRecording={isRecording}
-      />
-    </div>
-  );
-}
-
-export default App;
+// export default App;
 
 
 
